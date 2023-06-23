@@ -19,8 +19,20 @@ def lambda_handler(event= None, context= None) -> dict:
     time.sleep(10)
 
     content = driver.find_element(By.CSS_SELECTOR, "div[class*='list-documentos d-flex flex-wrap pr-2 pl-2'")
-    link = content.find_element(By.TAG_NAME, "a").get_attribute("href")
+    #link = content.find_element(By.TAG_NAME, "a").get_attribute("href")
 
+    links = content.find_elements(By.TAG_NAME, "a")
+
+    for item in links:
+        if "InfoMercado_Dados_Individuais" in item.get_attribute("href"):
+            link = item.get_attribute("href")
+    
+    if link is None:
+        return {
+            'status_code': 400,
+            'body' : "Nenhum arquivo localizado"
+        }
+            
     session = requests.Session()
 
     try:
@@ -34,7 +46,7 @@ def lambda_handler(event= None, context= None) -> dict:
     if response.status_code == 200:
 
         nome_arquivo = unquote(response.headers['Content-Disposition'].split('filename=')[1]).strip('\'"')
-        caminho_arquivo = os.path.join('/home/misteryoh/Downloads/', nome_arquivo)
+        caminho_arquivo = os.path.join('./', nome_arquivo)
 
         with open(caminho_arquivo, "wb") as arquivo:
             arquivo.write(response.content)
@@ -56,7 +68,7 @@ def lambda_handler(event= None, context= None) -> dict:
 def selenium_session() -> Chrome:
     # start by defining the options 
     options = webdriver.ChromeOptions() 
-    options.headless = True # it's more scalable to work in headless mode
+    options.add_argument('--headless')
 
     # normally, selenium waits for all resources to download 
     # we don't need it as the page also populated with the running javascript code. 
