@@ -1,6 +1,8 @@
 import time 
 import requests
 import os
+import boto3
+from botocore.exceptions import ClientError
 from urllib.parse import unquote
 from requests import RequestException
 from selenium import webdriver 
@@ -14,6 +16,7 @@ def lambda_handler(event= None, context= None) -> dict:
     url = "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal" 
     
     driver = selenium_session()
+
     driver.get(url)
 
     time.sleep(10)
@@ -48,8 +51,8 @@ def lambda_handler(event= None, context= None) -> dict:
         nome_arquivo = unquote(response.headers['Content-Disposition'].split('filename=')[1]).strip('\'"')
         caminho_arquivo = os.path.join('./', nome_arquivo)
 
-        with open(caminho_arquivo, "wb") as arquivo:
-            arquivo.write(response.content)
+        upload_response = upload_s3_object(content=response.content, profile='default', bucket='webscrapingstudy',
+                                folder='ccee', filename=nome_arquivo)
 
         print("Arquivo salvo com sucesso")
     else:
@@ -83,5 +86,39 @@ def selenium_session() -> Chrome:
     driver.implicitly_wait(5)
 
     return driver
+
+def upload_s3_object(content, profile, bucket, folder, filename) -> dict:
+    """Upload an object to an S3 bucket
+
+    :param content: Content to upload
+    :param profile: AWS profile to be used
+    :param bucket: S3 bucket name
+    :param folder: Folder name
+    :param filename: S3 object name
+    :return: dict
+    """
+
+    # Create a session using the specified configuration file
+    if profile is None:
+        session = boto3.Session()
+    else:
+        session = boto3.Session(profile_name=profile, region_name='sa-east-1')
+
+    s3_client = session.client('s3')
+
+    try:
+        # Put object into the S3 bucker
+        s3_object = s3_client.put_object(
+            Bucket=bucket, Key=f"{folder}/{filename}", Body=content)
+    except ClientError as err:
+        return {
+            'status_code' : 400,
+            'body' : err
+        }
+    
+    return {
+        'status_code' : 200,
+        'body' : 'Upload realizado com sucesso'
+    }
 
 lambda_handler()
