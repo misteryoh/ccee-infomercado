@@ -29,6 +29,7 @@ data "archive_file" "lambda_zip" {
     "chrome-driver.zip",
     "chrome-driver",
     "lambda_layer.zip",
+    "dependencies_layer.zip",
     "__pycache__"
   ]
 
@@ -71,6 +72,20 @@ resource "aws_lambda_layer_version" "dependencies_layer" {
   compatible_runtimes = ["python3.7"]
 }
 
+resource "aws_lambda_layer_version" "chromium_layer" {
+  s3_bucket = "webscrapingstudy"
+  s3_key = "chromium/headless-chromium.zip"
+  layer_name = "chromium-layer"
+  compatible_runtimes = ["python3.7"]
+}
+
+resource "aws_lambda_layer_version" "chromedriver_layer" {
+  s3_bucket = "webscrapingstudy"
+  s3_key = "chromedriver/chromedriver.zip"
+  layer_name = "chromedriver-layer"
+  compatible_runtimes = ["python3.7"]
+}
+
 resource "aws_lambda_function" "lambda_function" {
   filename = "../ccee-infomercado.zip"
   description = "Função lambda para capturar os dados do CCEE - InfoMercado Dados Individuais"
@@ -80,5 +95,5 @@ resource "aws_lambda_function" "lambda_function" {
   runtime = "python3.7"
   memory_size = 128
   timeout = 900
-  layers = [aws_lambda_layer_version.dependencies_layer.arn]
+  layers = [aws_lambda_layer_version.dependencies_layer.arn, aws_lambda_layer_version.chromium_layer.arn, aws_lambda_layer_version.chromedriver_layer.arn]
 }

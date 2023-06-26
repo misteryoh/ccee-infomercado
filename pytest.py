@@ -1,16 +1,18 @@
 import ccee_extractor
 
-events = {
-    "url" : "https://dadosabertos.camara.leg.br/api/v2/proposicoes",
-    "params" : {
-        "siglaTipo" : "PL",
-        "ano" : "2023",
-        "itens" : "100",
-        "ordem" : "ASC",
-        "ordenarPor" : "id"
-    }
+payload = {
+    "url" : "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal",
+    "driver_path" : "./chromedriver",
+    "profile"     : "default",
+    "search_file" : "InfoMercado_Dados_Individuais"
 }
 
-ccee_extractor.lambda_handler(events=events, context=None)
+ccee_extractor.lambda_handler(event=payload)
 
 
+# {
+#     "url" : "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal",
+#     "driver_path" : "/opt/chromedriver",
+#     "profile"     : null,
+#     "search_file" : "InfoMercado_Dados_Individuais"
+# }
