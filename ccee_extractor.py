@@ -1,11 +1,12 @@
 import time 
 import requests
 import os
-from src.SeleniumController import SeleniumBrowser
 from src.Boto3Controller import S3Api
 from urllib.parse import unquote
 from requests import RequestException
-from selenium.webdriver.common.by import By 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 
 def lambda_handler(event= None, context= None) -> dict:
 
@@ -13,23 +14,35 @@ def lambda_handler(event= None, context= None) -> dict:
     Payload exemple
     {
         "url"         : "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal",
-        "driver_path" : "/opt/driver/chromedriver",
         "profile"     : "default",
         "search_file" : "InfoMercado_Dados_Individuais"
     }
     """
     
     url         = event['url']
-    driver_path = event['driver_path']
     profile     = event['profile']
     search_file = event['search_file']
     
-    # Instance Selenium Browser - Chrome
-    # browser = SeleniumBrowser()
-    browser = SeleniumBrowser(driver_path=driver_path) # Use for lambda layer with chromedriver
-    driver = browser.session()
+    ### Start - Selenium WebScraping
+
+    print("Etapa 1 - Abrir ChromeDrive")
+
+    options = Options()
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--single-process')
+    options.add_argument('--disable-dev-shm-usage')
+    options.binary_location = "/opt/headless-chromium"
+
+    # pass the defined options and executable_path to initialize the web driver 
+    driver = webdriver.Chrome(executable_path='/opt/chromedriver', chrome_options=options) 
+
+    print("Etapa 2 - Requisição no ChromeDrive com URL")
+
     driver.get(url)
     time.sleep(10)
+
+    print("Etapa 3 - Localizar elementos")
 
     # Find in HTML the desired element 
     content = driver.find_element(By.CSS_SELECTOR, "div[class*='list-documentos d-flex flex-wrap pr-2 pl-2'")
@@ -47,6 +60,15 @@ def lambda_handler(event= None, context= None) -> dict:
             'body' : "Nenhum arquivo localizado"
         }
 
+    print("Etapa 4 - Fechar o ChromeDrive")
+
+    driver.close()
+    driver.quit()
+
+    ### End - Selenium WebScraping
+
+    print("Etapa 5 - Fazer Download do arquivo")
+
     # Open Requests session to Download the file  
     session = requests.Session()
 
@@ -57,6 +79,8 @@ def lambda_handler(event= None, context= None) -> dict:
             'status_code' : 400,
             'body' : e
         }
+
+    print("Etapa 6 - Enviar arquivo para Bucket S3")
 
     if response.status_code == 200:
 
@@ -80,6 +104,8 @@ def lambda_handler(event= None, context= None) -> dict:
             'status_code' : 400,
             'body' : 'A requisição falhou'
         }
+
+    print("Etapa 7 - Fim da execução")
 
     return {
         'status_code' : 200,
