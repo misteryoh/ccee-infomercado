@@ -17,7 +17,7 @@ data "archive_file" "lambda_zip" {
   type = "zip"
   source_dir = "../../ccee-infomercado"
   output_path = "../../ccee-infomercado/ccee-infomercado.zip"
-  
+   
   excludes = [
     "terraform",
     "site-packages",
@@ -25,21 +25,27 @@ data "archive_file" "lambda_zip" {
     ".github",
     ".gitignore",
     "site-packages.zip",
-    "ccee-infomercado.zip"
+    "ccee-infomercado.zip",
+    "chrome-driver.zip",
+    "chrome-driver",
+    "lambda_layer.zip",
+    "__pycache__"
   ]
+
+  
 }
 
-data "archive_file" "lambda_layer_zip" {
+data "archive_file" "dependencies_layer_zip" {
   type        = "zip"
   source_dir  = "../site-packages"
-  output_path = "../../ccee-infomercado/lambda_layer.zip"
+  output_path = "../../ccee-infomercado/dependencies_layer.zip"
 
   depends_on = [
-    "null_resource.lambda_layer"
+    "null_resource.dependencies_layer"
   ]
 }
 
-resource "null_resource" "lambda_layer" {
+resource "null_resource" "dependencies_layer" {
   triggers = {
     timestamp = timestamp()
   }
@@ -52,18 +58,17 @@ resource "null_resource" "lambda_layer" {
           --platform linux_x86_64 \
           --target ./site-packages/python \
           --implementation cp \
-          --python-version 3.10 \
+          --python-version 3.7 \
           --only-binary=:all: --upgrade
-      mv ./chromedriver ./site-packages/chromedriver
     EOF
     working_dir = "../"
   }
 }
 
-resource "aws_lambda_layer_version" "lambda_layer" {
-  filename   = data.archive_file.lambda_layer_zip.output_path
+resource "aws_lambda_layer_version" "dependencies_layer" {
+  filename   = data.archive_file.dependencies_layer_zip.output_path
   layer_name = "dependencies-layer"
-  compatible_runtimes = ["python3.10"]
+  compatible_runtimes = ["python3.7"]
 }
 
 resource "aws_lambda_function" "lambda_function" {
@@ -71,9 +76,9 @@ resource "aws_lambda_function" "lambda_function" {
   description = "Função lambda para capturar os dados do CCEE - InfoMercado Dados Individuais"
   function_name = "lambda-ccee-infomercado-getdata"
   role = data.aws_iam_role.lambda_role.arn
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.10"
+  handler = "ccee_extractor.lambda_handler"
+  runtime = "python3.7"
   memory_size = 128
   timeout = 900
-  layers = [aws_lambda_layer_version.lambda_layer.arn]
+  layers = [aws_lambda_layer_version.dependencies_layer.arn]
 }
