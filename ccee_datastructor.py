@@ -9,22 +9,26 @@ def lambda_handler(event, context):
         "filepath"    : "/home/misteryoh/Coding/Git/ccee-infomercado/data",
         "filename"    : "InfoMercado.xlsx",
         "profile"     : "default",
-        "sheets" : [
+        "params" : [
             {
-                "sheet_name" : "002 Usinas",
-                "table_name" : "Tabela 001",
-                "first_col"  : "Código do Ativo",
-                "last_col"   : "Geração por Unit Commitment",
-                "footer"     : "Topo",
-                "deadrows"   : 3
+                "sheet_name"      : "002 Usinas",
+                "table_name"      : "Tabela 001",
+                "first_col"       : "Código do Ativo",
+                "last_col"        : "Geração por Unit Commitment",
+                "footer"          : "Topo",
+                "deadrows"        : 3,
+                "output_name"     : "InfoMercado_Usinas"
+                "output_type"     : ".csv"
             },
             {
-                "sheet_name" : "007 Lista de Perfis",
-                "table_name" : "Tabela 001",
-                "first_col"  : "Cód. Agente",
-                "last_col"   : "Perfil Varejista",
-                "footer"     : "Topo",
-                "deadrows"   : 2
+                "sheet_name"      : "007 Lista de Perfis",
+                "table_name"      : "Tabela 001",
+                "first_col"       : "Cód. Agente",
+                "last_col"        : "Perfil Varejista",
+                "footer"          : "Topo",
+                "deadrows"        : 2,
+                "output_name"     : "InfoMercado_Perfis"
+                "output_type"     : ".csv"
             }
         ]
     }
@@ -47,6 +51,8 @@ def lambda_handler(event, context):
         last_cell = sheets['last_col']
         footer_cell = sheets['footer']
         deadrows = sheets['deadrows']
+        output_name = sheets['output_name']
+        output_type = sheets['output_type']
 
         title_range = None
         start_range = None
@@ -84,30 +90,40 @@ def lambda_handler(event, context):
         df.columns = df.iloc[0]
         df = df[1:]
 
+        match output_type:
+            case '.csv':
+                df.to_csv(path_or_buf=f'{filepath}{output_name}{output_type}', index=False)
+            case '.xlsx':
+                df.to_excel(f'{filepath}{output_name}{output_type}', index=False)
+        
         results.append(df)
 
     return results
 
 payload = {
-    "filepath"    : "/home/misteryoh/Coding/Git/ccee-infomercado/data",
+    "filepath"    : "/home/misteryoh/Coding/Git/ccee-infomercado/data/",
     "filename"    : "InfoMercado.xlsx",
     "profile"     : "default",
     "params" : [
         {
-            "sheet_name" : "002 Usinas",
-            "table_name" : "Tabela 001",
-            "first_col"  : "Código do Ativo",
-            "last_col"   : "Geração por Unit Commitment",
-            "footer"     : "Topo",
-            "deadrows"   : 3
+            "sheet_name"      : "002 Usinas",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Código do Ativo",
+            "last_col"        : "Geração por Unit Commitment",
+            "footer"          : "Topo",
+            "deadrows"        : 3,
+            "output_name"     : "InfoMercado_Usinas",
+            "output_type"     : ".csv"
         },
         {
-            "sheet_name" : "007 Lista de Perfis",
-            "table_name" : "Tabela 001",
-            "first_col"  : "Cód. Agente",
-            "last_col"   : "Perfil Varejista",
-            "footer"     : "Topo",
-            "deadrows"   : 2
+            "sheet_name"      : "007 Lista de Perfis",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Cód. Agente",
+            "last_col"        : "Perfil Varejista",
+            "footer"          : "Topo",
+            "deadrows"        : 2,
+            "output_name"     : "InfoMercado_Perfis",
+            "output_type"     : ".csv"
         }
     ]
 }
