@@ -1,26 +1,48 @@
 import time 
-import requests
 import os
+import resource
+from urllib.parse import unquote
 from src.Boto3Controller import S3Api
 from src.SeleniumController import SeleniumDriver
-from urllib.parse import unquote
-from requests import RequestException
-from selenium import webdriver
+from src.SheetController import SheetData
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+
 
 def lambda_handler(event= None, context= None) -> dict:
 
     """Upload an object to an S3 bucket
     """
-    
+
 ### Parameters definition
 
     url         = "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal"
-    driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/chrome2018/chromedriver"
-    binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/chrome2018/headless-chromium"
+    driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/chromedriver"
+    binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/headless-chromium"
     download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
     profile     = "default"
+
+    params = [
+        {
+            "sheet_name"      : "002 Usinas",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Código do Ativo",
+            "last_col"        : "Geração por Unit Commitment",
+            "footer"          : "Topo",
+            "deadrows"        : 3,
+            "output_name"     : "InfoMercado_Usinas",
+            "output_type"     : ".csv"
+        },
+        {
+            "sheet_name"      : "007 Lista de Perfis",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Cód. Agente",
+            "last_col"        : "Perfil Varejista",
+            "footer"          : "Topo",
+            "deadrows"        : 2,
+            "output_name"     : "InfoMercado_Perfis",
+            "output_type"     : ".csv"
+        }
+    ]
     
 ### Start - Selenium WebScraping
 
@@ -51,7 +73,7 @@ def lambda_handler(event= None, context= None) -> dict:
             'body' : "Nenhum arquivo localizado"
         }
 
-    print("Step  4 - Download File")
+    print("Step 4 - Download File")
     
     try:
         browser.driver.get(link)
@@ -66,23 +88,32 @@ def lambda_handler(event= None, context= None) -> dict:
 
 ### Start - Struct Data
 
+    print("Step 5 - Get file and struct data")
 
+    files = os.listdir(download_path)
+    for file_name in files:
+        if os.path.isfile(os.path.join(download_path, file_name)):
+            filename = file_name
+    
+    struct_result = SheetData()
+    struct_result = struct_result.load_workbook(filepath=download_path, filename=filename)
+    struct_result = struct_result.extract_data(params)
 
 ### End - Struct Data
 
-    print("Etapa 6 - Enviar arquivo para Bucket S3")
+### Start - Upload Struct Data to AWS
 
-    nome_arquivo = unquote(response.headers['Content-Disposition'].split('filename=')[1]).strip('\'"')
-    caminho_arquivo = os.path.join('./', nome_arquivo)
+    print("Step 6 - Upload files to S3 Bucket")
 
     awsconn = S3Api(profile=profile)
 
-    upload_response = awsconn.upload_s3_object(
-        content=response.content,
-        bucket='webscrapingstudy',
-        folder='ccee', 
-        filename=nome_arquivo
-    )
+    for struct_data in struct_result:
+        upload_response = awsconn.upload_s3_object(
+            content=struct_data['data'],
+            bucket='webscrapingstudy',
+            folder='ccee', 
+            filename=struct_data['file'] + struct_data['type']
+        )
 
     print("Etapa 7 - Fim da execução")
 
@@ -90,5 +121,7 @@ def lambda_handler(event= None, context= None) -> dict:
         'status_code' : 200,
         'body' : 'Arquivo salvo com sucesso'
     }
+
+### End - Upload Struct Data to AWS
 
 lambda_handler()

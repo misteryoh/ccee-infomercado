@@ -1,4 +1,6 @@
 import openpyxl
+from io import StringIO
+
 
 class SheetData:
 
@@ -14,14 +16,14 @@ class SheetData:
         self.workbook = openpyxl.load_workbook(filepath + "/" + filename, read_only=True)
         return self
     
-    def extract_data(self, *args):
+    def extract_data(self, params, *args):
         """Extract structured data from downloaded file from CCEE
-        :param args: {sheet_name, table_name, first_col, last_col, footer, deadrows}
+        :param params: {sheet_name, table_name, first_col, last_col, footer, deadrows}
         """
 
-        results = {}
+        results = []
 
-        for sheets in args:
+        for sheets in params:
 
             sheet = self.workbook[sheets['sheet_name']]
             title_cell = sheets['table_name']
@@ -54,14 +56,23 @@ class SheetData:
             print("last_range  : " + last_range.coordinate)
             print("foot_range   : " + foot_range.coordinate)
 
-            data_rows = []
+            csv_buffer = StringIO()
+
             if title_range.value is not None:
                 for row in sheet[f'{start_range.coordinate}':f'{last_range.column_letter + str(foot_range.row - deadrows)}']:
-                    data_cols = []
                     for cell in row:
-                        data_cols.append(cell.value)
-                    data_rows.append(data_cols)
+                        csv_buffer.write(str(cell.value) + ';')
+                    csv_buffer.write('\n')
             else:
                 print("Algo deu errado")
 
-            results.append((sheets['sheet_name'], data_rows))
+            csv_buffer.seek(0)
+
+            sheet_data = {}
+            sheet_data['file'] = output_name
+            sheet_data['data'] = csv_buffer.getvalue().encode()
+            sheet_data['type'] = output_type
+
+            results.append(sheet_data)
+
+        return results
