@@ -1,56 +1,69 @@
 import time 
-import requests
 import os
-from src.Boto3Controller import S3Api
+import resource
 from urllib.parse import unquote
-from requests import RequestException
-from selenium import webdriver
+from src.Boto3Controller import S3Api
+from src.SeleniumController import SeleniumDriver
+from src.SheetController import SheetData
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+
 
 def lambda_handler(event= None, context= None) -> dict:
 
     """Upload an object to an S3 bucket
-    Payload exemple
-    {
-        "url"         : "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal",
-        "profile"     : "default",
-        "search_file" : "InfoMercado_Dados_Individuais"
-    }
     """
+
+### Parameters definition
+
+    url         = "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal"
+    driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/chromedriver"
+    binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/headless-chromium"
+    download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
+    profile     = "default"
+
+    params = [
+        {
+            "sheet_name"      : "002 Usinas",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Código do Ativo",
+            "last_col"        : "Geração por Unit Commitment",
+            "footer"          : "Topo",
+            "deadrows"        : 3,
+            "output_name"     : "InfoMercado_Usinas",
+            "output_type"     : ".csv"
+        },
+        {
+            "sheet_name"      : "007 Lista de Perfis",
+            "table_name"      : "Tabela 001",
+            "first_col"       : "Cód. Agente",
+            "last_col"        : "Perfil Varejista",
+            "footer"          : "Topo",
+            "deadrows"        : 2,
+            "output_name"     : "InfoMercado_Perfis",
+            "output_type"     : ".csv"
+        }
+    ]
     
-    url         = event['url']
-    profile     = event['profile']
-    search_file = event['search_file']
-    
-    ### Start - Selenium WebScraping
+### Start - Selenium WebScraping
 
-    print("Etapa 1 - Abrir ChromeDrive")
+    print("Step 1 - Open ChromeDrive")
 
-    options = Options()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--single-process')
-    options.add_argument('--disable-dev-shm-usage')
-    options.binary_location = "/opt/headless-chromium"
+    browser = SeleniumDriver(driver_path=driver_path, binary_path=binary_path, download_path=download_path)
 
-    # pass the defined options and executable_path to initialize the web driver 
-    driver = webdriver.Chrome(executable_path='/opt/chromedriver', chrome_options=options) 
+    print("Step 2 - Request at the URL")
 
-    print("Etapa 2 - Requisição no ChromeDrive com URL")
+    browser.driver.get(url)
+    #time.sleep(10)
 
-    driver.get(url)
-    time.sleep(10)
-
-    print("Etapa 3 - Localizar elementos")
+    print("Step 3 - Search the desire elements")
 
     # Find in HTML the desired element 
-    content = driver.find_element(By.CSS_SELECTOR, "div[class*='list-documentos d-flex flex-wrap pr-2 pl-2'")
+    content = browser.driver.find_element(By.CSS_SELECTOR, "div[class*='list-documentos d-flex flex-wrap pr-2 pl-2'")
     links = content.find_elements(By.TAG_NAME, "a")
 
     # Loop through the href elements, searching for the desired pattern
     for item in links:
-        if search_file in item.get_attribute("href"):
+        if 'InfoMercado' in item.get_attribute("href") and 'Individuais' in item.get_attribute("href"):
             link = item.get_attribute("href")
     
     # Return Status_Code 404 if can't find the element 
@@ -60,50 +73,47 @@ def lambda_handler(event= None, context= None) -> dict:
             'body' : "Nenhum arquivo localizado"
         }
 
-    print("Etapa 4 - Fechar o ChromeDrive")
-
-    driver.close()
-    driver.quit()
-
-    ### End - Selenium WebScraping
-
-    print("Etapa 5 - Fazer Download do arquivo")
-
-    # Open Requests session to Download the file  
-    session = requests.Session()
-
+    print("Step 4 - Download File")
+    
     try:
-        response = session.get(link)
-    except RequestException as e:
-        return {
-            'status_code' : 400,
-            'body' : e
-        }
+        browser.driver.get(link)
+        time.sleep(10)
+    except Exception as e:
+        print("Erro ao realizar o download: " + str(e))
 
-    print("Etapa 6 - Enviar arquivo para Bucket S3")
+    browser.driver.close()
+    browser.driver.quit()
 
-    if response.status_code == 200:
+### End - Selenium WebScraping
 
-        nome_arquivo = unquote(response.headers['Content-Disposition'].split('filename=')[1]).strip('\'"')
-        caminho_arquivo = os.path.join('./', nome_arquivo)
+### Start - Struct Data
 
-        awsconn = S3Api(profile=profile)
+    print("Step 5 - Get file and struct data")
 
+    files = os.listdir(download_path)
+    for file_name in files:
+        if os.path.isfile(os.path.join(download_path, file_name)):
+            filename = file_name
+    
+    struct_result = SheetData()
+    struct_result = struct_result.load_workbook(filepath=download_path, filename=filename)
+    struct_result = struct_result.extract_data(params)
+
+### End - Struct Data
+
+### Start - Upload Struct Data to AWS
+
+    print("Step 6 - Upload files to S3 Bucket")
+
+    awsconn = S3Api(profile=profile)
+
+    for struct_data in struct_result:
         upload_response = awsconn.upload_s3_object(
-            content=response.content,
+            content=struct_data['data'],
             bucket='webscrapingstudy',
             folder='ccee', 
-            filename=nome_arquivo
+            filename=struct_data['file'] + struct_data['type']
         )
-
-        print("Arquivo salvo com sucesso")
-    else:
-        print("A requisição falhou com o código de status:", response.status_code)
-        
-        return {
-            'status_code' : 400,
-            'body' : 'A requisição falhou'
-        }
 
     print("Etapa 7 - Fim da execução")
 
@@ -111,3 +121,7 @@ def lambda_handler(event= None, context= None) -> dict:
         'status_code' : 200,
         'body' : 'Arquivo salvo com sucesso'
     }
+
+### End - Upload Struct Data to AWS
+
+lambda_handler()
