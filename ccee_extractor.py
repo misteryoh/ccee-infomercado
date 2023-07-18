@@ -1,7 +1,5 @@
 import time 
 import os
-import resource
-from urllib.parse import unquote
 from src.Boto3Controller import S3Api
 from src.SeleniumController import SeleniumDriver
 from src.SheetController import SheetData
@@ -16,10 +14,14 @@ def lambda_handler(event= None, context= None) -> dict:
 ### Parameters definition
 
     url         = "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal"
-    driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/chromedriver"
-    binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/2020/headless-chromium"
-    download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
-    profile     = "default"
+    # driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/chromedriver"
+    # binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/headless-chromium"
+    # download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
+    #profile     = "default"
+    driver_path = "/opt/chromedriver"
+    binary_path = "/opt/headless-chromium"
+    download_path = "/tmp/"
+    profile     = None
 
     params = [
         {
@@ -57,7 +59,7 @@ def lambda_handler(event= None, context= None) -> dict:
 
     print("Step 3 - Search the desire elements")
 
-    # Find in HTML the desired element 
+    # Find in HTML the desired element
     content = browser.driver.find_element(By.CSS_SELECTOR, "div[class*='list-documentos d-flex flex-wrap pr-2 pl-2'")
     links = content.find_elements(By.TAG_NAME, "a")
 
@@ -74,13 +76,8 @@ def lambda_handler(event= None, context= None) -> dict:
         }
 
     print("Step 4 - Download File")
-    
-    try:
-        browser.driver.get(link)
-        time.sleep(10)
-    except Exception as e:
-        print("Erro ao realizar o download: " + str(e))
 
+    filename = browser.download_files_requests(download_path=download_path, download_url=link)
     browser.driver.close()
     browser.driver.quit()
 
@@ -90,11 +87,6 @@ def lambda_handler(event= None, context= None) -> dict:
 
     print("Step 5 - Get file and struct data")
 
-    files = os.listdir(download_path)
-    for file_name in files:
-        if os.path.isfile(os.path.join(download_path, file_name)):
-            filename = file_name
-    
     struct_result = SheetData()
     struct_result = struct_result.load_workbook(filepath=download_path, filename=filename)
     struct_result = struct_result.extract_data(params)
@@ -122,6 +114,4 @@ def lambda_handler(event= None, context= None) -> dict:
         'body' : 'Arquivo salvo com sucesso'
     }
 
-### End - Upload Struct Data to AWS
-
-lambda_handler()
+### End - Upload Structed Data to AWS
