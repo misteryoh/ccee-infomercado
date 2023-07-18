@@ -91,7 +91,23 @@ resource "aws_lambda_function" "lambda_function" {
   role = data.aws_iam_role.lambda_role.arn
   handler = "ccee_extractor.lambda_handler"
   runtime = "python3.7"
-  memory_size = 128
+  memory_size = 2048
   timeout = 900
   layers = [aws_lambda_layer_version.dependencies_layer.arn, aws_lambda_layer_version.chrome_layer.arn]
 }
+
+# Deprecated
+
+# resource "aws_lambda_layer_version" "chromedriver_layer" {
+#   s3_bucket = "webscrapingstudy"
+#   s3_key = "chromedriver/chromedriver.zip"
+#   layer_name = "chromedriver-layer"
+#   compatible_runtimes = ["python3.7"]
+# }
+
+# resource "aws_lambda_layer_version" "chromium_layer" {
+#   s3_bucket = "webscrapingstudy"
+#   s3_key = "chromedriver/headless-chromium.zip"
+#   layer_name = "chromium-layer"
+#   compatible_runtimes = ["python3.9"]
+# }
