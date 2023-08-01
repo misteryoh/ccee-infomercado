@@ -1,0 +1,28 @@
+{
+    "colunas_originais": [
+        "Cód. Agente",
+        "Sigla do Agente",
+        "Nome Empresarial do Agente",
+        "CNPJ",
+        "Cód. Perfil de Agente",
+        "Sigla Perfil de Agente",
+        "Classe do Perfil de Agente",
+        "Status do Perfil de Agente",
+        "Categoria do Agente",
+        "Submercado do Perfil de Agente",
+        "Perfil Varejista"
+    ],
+    "colunas_novas": [
+        "cod_agente",
+        "sigla_agente",
+        "nome_agente",
+        "cnpj",
+        "cod_perfil_agente",
+        "sigla_perfil_agente",
+        "classe_perfil_agente",
+        "status_perfil_agente",
+        "categ_agente",
+        "submercado_perfil_agente",
+        "perfil_varejista"
+    ]
+}

@@ -14,13 +14,13 @@ def lambda_handler(event= None, context= None) -> dict:
 ### Parameters definition
 
     url         = "https://www.ccee.org.br/dados-e-analises/dados-mercado-mensal"
-    # driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/chromedriver"
-    # binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/headless-chromium"
-    # download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
-    #profile     = "default"
-    driver_path = "/opt/chromedriver"
-    binary_path = "/opt/headless-chromium"
-    download_path = "/tmp/"
+    driver_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/chromedriver"
+    binary_path = "/home/misteryoh/Coding/Git/ccee-infomercado/chrome-driver/headless-chromium"
+    download_path = "/home/misteryoh/Coding/Git/ccee-infomercado/data/"
+    # profile     = "default"
+    # driver_path = "/opt/chromedriver"
+    # binary_path = "/opt/headless-chromium"
+    # download_path = "/tmp/"
     profile     = None
 
     params = [
@@ -32,7 +32,8 @@ def lambda_handler(event= None, context= None) -> dict:
             "footer"          : "Topo",
             "deadrows"        : 3,
             "output_name"     : "InfoMercado_Usinas",
-            "output_type"     : ".csv"
+            "output_type"     : ".csv",
+            "schema"          : "schema_usinas.json"
         },
         {
             "sheet_name"      : "007 Lista de Perfis",
@@ -42,7 +43,8 @@ def lambda_handler(event= None, context= None) -> dict:
             "footer"          : "Topo",
             "deadrows"        : 2,
             "output_name"     : "InfoMercado_Perfis",
-            "output_type"     : ".csv"
+            "output_type"     : ".csv",
+            "schema"          : "schema_perfis.json"
         }
     ]
     
@@ -115,3 +117,5 @@ def lambda_handler(event= None, context= None) -> dict:
     }
 
 ### End - Upload Structed Data to AWS
+
+lambda_handler()

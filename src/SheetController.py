@@ -1,4 +1,5 @@
 import openpyxl
+import json
 from io import StringIO
 
 
@@ -33,6 +34,7 @@ class SheetData:
             deadrows = sheets['deadrows']
             output_name = sheets['output_name']
             output_type = sheets['output_type']
+            schema = sheets['schema']
 
             title_range = None
             start_range = None
@@ -56,13 +58,31 @@ class SheetData:
             print("last_range  : " + last_range.coordinate)
             print("foot_range   : " + foot_range.coordinate)
 
+
+            # Load schema
+            with open(f'/home/misteryoh/Coding/Git/ccee-infomercado/data/{schema}', 'r') as schema_file:
+                schema_data = json.load(schema_file)
+                colunas_originais = schema_data["colunas_originais"]
+                colunas_novas = schema_data["colunas_novas"]
+
+            # Criação do dicionário para mapear colunas originais para novas colunas
+            colunas_mapping = dict(zip(colunas_originais, colunas_novas))
+
             csv_buffer = StringIO()
+            count_row = 0
 
             if title_range.value is not None:
                 for row in sheet[f'{start_range.coordinate}':f'{last_range.column_letter + str(foot_range.row - deadrows)}']:
                     for cell in row:
-                        csv_buffer.write(str(cell.value) + ';')
+                        if count_row == 0:
+                            valor_celula = str(cell.value)
+                            valor_coluna_nova = colunas_mapping.get(valor_celula, valor_celula)
+
+                            csv_buffer.write(valor_coluna_nova + ';')
+                        else:
+                            csv_buffer.write(str(cell.value) + ';')
                     csv_buffer.write('\n')
+                    count_row += 1
             else:
                 print("Algo deu errado")
 
